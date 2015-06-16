@@ -34,9 +34,8 @@ type Client struct {
 	token       string
 	credentials credentials
 
-	Members       *MemberService
-	MemberSharing *MemberSharingService
-	Segments      *SegmentService
+	Members  *MemberService
+	Segments *SegmentService
 }
 
 // Rate contains information on the current rate limit in operation
@@ -54,18 +53,17 @@ type Rate struct {
 type Response struct {
 	*http.Response
 	Obj struct {
-		Status             string          `json:"status"`
-		ID                 int             `json:"id,omitempty"`
-		Token              string          `json:"token,omitempty"`
-		Service            string          `json:"service,omitempty"`
-		Method             string          `json:"method,omitempty"`
-		Count              int             `json:"count,omitempty"`
-		StartElement       int             `json:"start_element,omitempty"`
-		NumElements        int             `json:"num_elements,omitempty"`
-		MemberDataSharings []MemberSharing `json:"member_data_sharings,omitempty"`
-		Member             Member          `json:"member,omitempty"`
-		Segments           []Segment       `json:"segments,omitempty"`
-		Rate               Rate            `json:"dbg_info"`
+		Status       string    `json:"status"`
+		ID           int       `json:"id,omitempty"`
+		Token        string    `json:"token,omitempty"`
+		Service      string    `json:"service,omitempty"`
+		Method       string    `json:"method,omitempty"`
+		Count        int       `json:"count,omitempty"`
+		StartElement int       `json:"start_element,omitempty"`
+		NumElements  int       `json:"num_elements,omitempty"`
+		Member       Member    `json:"member,omitempty"`
+		Segments     []Segment `json:"segments,omitempty"`
+		Rate         Rate      `json:"dbg_info"`
 	} `json:"response"`
 }
 
@@ -108,7 +106,6 @@ func NewClient(httpClient *http.Client) *Client {
 	}
 
 	c.Members = &MemberService{client: c}
-	c.MemberSharing = &MemberSharingService{client: c}
 	c.Segments = &SegmentService{client: c}
 
 	return c
