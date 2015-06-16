@@ -15,9 +15,9 @@ Support for the remaining services should follow - pull requests welcome :)
 Getting started
 --------------
 ```Bash
-$ cd $GOPATH
-$ go get github.com/adwww/appnexus
-$ go get -u all
+cd $GOPATH
+go get github.com/adwww/appnexus
+go get -u all
 ```
 
-Be sure to run the tests with `go test` and have a look at the `examples/main.go` file for a usage demonstration.
+Be sure to run the tests with `go test` and have a look at the [examples directory](./examples/) for a usage demonstration.
