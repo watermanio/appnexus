@@ -14,11 +14,6 @@ import (
 	"github.com/google/go-querystring/query"
 )
 
-// const defaultEndPoint = "https://api.appnexus.com"
-// const defaultEndPoint = "http://hb.sand-08.adnxs.net/"
-
-const defaultEndPoint = "http://sand.api.appnexus.com/"
-
 // Credentials required to login
 type credentials struct {
 	Username string `json:"username"`
@@ -33,6 +28,7 @@ type Client struct {
 	UserAgent   string
 	token       string
 	credentials credentials
+	MemberID    int
 
 	Members  *MemberService
 	Segments *SegmentService
@@ -90,14 +86,13 @@ type ListOptions struct {
 }
 
 // NewClient returns a new AppNexus API client
-// If a nil httpClient is provided, http.DefaultClient will be used.
-func NewClient(httpClient *http.Client) *Client {
+func NewClient(endPointURL string) (*Client, error) {
 
-	if httpClient == nil {
-		httpClient = http.DefaultClient
+	httpClient := http.DefaultClient
+	baseURL, err := url.Parse(endPointURL)
+	if err != nil {
+		return nil, errors.New("Invalid AppNexus API endpoint")
 	}
-
-	baseURL, _ := url.Parse(defaultEndPoint)
 
 	c := &Client{
 		client:    httpClient,
@@ -108,7 +103,7 @@ func NewClient(httpClient *http.Client) *Client {
 	c.Members = &MemberService{client: c}
 	c.Segments = &SegmentService{client: c}
 
-	return c
+	return c, nil
 }
 
 // NewRequest creates an API request using a relative URL

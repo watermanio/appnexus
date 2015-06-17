@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"reflect"
 	"strings"
 	"testing"
@@ -27,9 +26,7 @@ func setup() {
 	server = httptest.NewServer(mux)
 
 	// appnexus client configured to use test server
-	client = NewClient(nil)
-	url, _ := url.Parse(server.URL)
-	client.EndPoint = url
+	client, _ = NewClient(server.URL)
 }
 
 // teardown closes the test HTTP server.
@@ -38,9 +35,9 @@ func teardown() {
 }
 
 func TestNewClient(t *testing.T) {
-	c := NewClient(nil)
+	c, _ := NewClient("http://sand.api.appnexus.com/")
 
-	if actual, expected := c.EndPoint.String(), defaultEndPoint; actual != expected {
+	if actual, expected := c.EndPoint.String(), "http://sand.api.appnexus.com/"; actual != expected {
 		t.Errorf("NewClient EndPoint is %v, expected %v", actual, expected)
 	}
 
@@ -50,9 +47,9 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestNewRequest(t *testing.T) {
-	c := NewClient(nil)
+	c, _ := NewClient("http://sand.api.appnexus.com/")
 
-	inURL, outURL := "/foo", defaultEndPoint+"foo"
+	inURL, outURL := "/foo", "http://sand.api.appnexus.com/foo"
 	inBody, outBody := &User{FirstName: "Andy"}, `{"first_name":"Andy"}`+"\n"
 	req, _ := c.newRequest("GET", inURL, inBody)
 

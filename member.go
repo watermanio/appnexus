@@ -112,7 +112,13 @@ func (s *MemberService) Get(memberID int) (*Member, error) {
 	return member, nil
 }
 
-// GetDefault AppNexus member object
+// GetDefault AppNexus member object and set the working member in AppNexus.Client
 func (s *MemberService) GetDefault() (*Member, error) {
-	return s.Get(0)
+	member, err := s.Get(0)
+	if err != nil {
+		return nil, err
+	}
+
+	s.client.MemberID = member.ID
+	return member, nil
 }

@@ -11,8 +11,13 @@ import (
 func main() {
 
 	// Create a new client and login to authentication service;
-	c := AppNexus.NewClient(nil)
-	err := c.Login("<<<username@example.com>>>", "<<<password>>>")
+	c, err := AppNexus.NewClient("http://sand.api.appnexus.com/")
+	if err != nil {
+		color.Red(err.Error())
+		os.Exit(1)
+	}
+
+	err = c.Login("<<<username@example.com>>>", "<<<password>>>")
 	if err != nil {
 		color.Red(err.Error())
 		os.Exit(2)
