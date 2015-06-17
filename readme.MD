@@ -2,6 +2,8 @@ AppNexus REST API Go Client
 ===========================
 *Connect to the AppNexus REST API through your Golang application*
 
+[![Build Status](https://travis-ci.org/adwww/appnexus.svg?branch=master)](https://travis-ci.org/adwww/appnexus)
+
 **Important** This is very much beta and subject to breaking changes while under development. Do not use in production just yet!
 
 Of the published [AppNexus API Services](https://wiki.appnexus.com/display/adnexusdocumentation/API+Services) listed, this package covers the following:
