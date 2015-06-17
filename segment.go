@@ -1,4 +1,4 @@
-package AppNexus
+package appnexus
 
 import (
 	"errors"

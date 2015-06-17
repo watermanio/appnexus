@@ -1,4 +1,4 @@
-package AppNexus
+package appnexus
 
 // User is a login user on the AppNexus console
 type User struct {

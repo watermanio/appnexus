@@ -11,7 +11,7 @@ import (
 func main() {
 
 	// Create a new client and login to authentication service;
-	c, err := AppNexus.NewClient("http://sand.api.appnexus.com/")
+	c, err := appnexus.NewClient("http://sand.api.appnexus.com/")
 	if err != nil {
 		color.Red(err.Error())
 		os.Exit(1)
@@ -33,7 +33,7 @@ func main() {
 	fmt.Println("\n\nConnected as member", color.YellowString(member.Name))
 
 	// List the first 20 segments available to this member:
-	segments, _, err := c.Segments.List(member.ID, &AppNexus.ListOptions{StartElement: 0, NumElements: 20})
+	segments, _, err := c.Segments.List(member.ID, &appnexus.ListOptions{StartElement: 0, NumElements: 20})
 	if err != nil {
 		color.Red(err.Error())
 		os.Exit(4)
@@ -46,7 +46,7 @@ func main() {
 	}
 
 	// Create a new segment:
-	newSegment := AppNexus.Segment{
+	newSegment := appnexus.Segment{
 		ShortName:   "Test Seggy",
 		MemberID:    member.ID,
 		Description: "Test segment from the Go AppNexus API",
