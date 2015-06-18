@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"time"
 
 	"github.com/google/go-querystring/query"
 )
@@ -36,44 +37,34 @@ type Client struct {
 
 // Rate contains information on the current rate limit in operation
 type Rate struct {
-	Reads             int     `json:"reads"`
-	ReadLimit         int     `json:"read_limit"`
-	ReadLimitSeconds  int     `json:"read_limit_seconds"`
-	Writes            int     `json:"writes"`
-	WriteLimit        int     `json:"write_limit"`
-	WriteLimitSeconds int     `json:"write_limit_seconds"`
-	Time              float64 `json:"time"`
+	Reads             int       `json:"reads"`
+	ReadLimit         int       `json:"read_limit"`
+	ReadLimitSeconds  int       `json:"read_limit_seconds"`
+	Writes            int       `json:"writes"`
+	WriteLimit        int       `json:"write_limit"`
+	WriteLimitSeconds int       `json:"write_limit_seconds"`
+	Time              time.Time `json:"-"`
 }
 
 // Response is a AppNexus API response object
 type Response struct {
 	*http.Response
 	Obj struct {
-		Status       string    `json:"status"`
-		ID           int       `json:"id,omitempty"`
-		Token        string    `json:"token,omitempty"`
-		Service      string    `json:"service,omitempty"`
-		Method       string    `json:"method,omitempty"`
-		Count        int       `json:"count,omitempty"`
-		StartElement int       `json:"start_element,omitempty"`
-		NumElements  int       `json:"num_elements,omitempty"`
-		Member       Member    `json:"member,omitempty"`
-		Segments     []Segment `json:"segments,omitempty"`
-		Rate         Rate      `json:"dbg_info"`
-	} `json:"response"`
-}
-
-// ErrorResponse is a AppNexus API response to an internal error
-type ErrorResponse struct {
-	*http.Response
-	Obj struct {
-		Status           string `json:"status"`
-		ErrorID          string `json:"error_id"`
-		Error            string `json:"error"`
-		ErrorDescription string `json:"error_description"`
-		ErrorCode        string `json:"error_code"`
-		Service          string `json:"service"`
-		Rate             Rate   `json:"dbg_info"`
+		Status           string    `json:"status"`
+		ID               int       `json:"id,omitempty"`
+		ErrorID          string    `json:"error_id,omitempty"`
+		Error            string    `json:"error,omitempty"`
+		ErrorDescription string    `json:"error_description,omitempty"`
+		ErrorCode        string    `json:"error_code,omitempty"`
+		Token            string    `json:"token,omitempty"`
+		Service          string    `json:"service,omitempty"`
+		Method           string    `json:"method,omitempty"`
+		Count            int       `json:"count,omitempty"`
+		StartElement     int       `json:"start_element,omitempty"`
+		NumElements      int       `json:"num_elements,omitempty"`
+		Member           Member    `json:"member,omitempty"`
+		Segments         []Segment `json:"segments,omitempty"`
+		Rate             Rate      `json:"dbg_info"`
 	} `json:"response"`
 }
 
@@ -144,6 +135,9 @@ func (c *Client) newRequest(method, path string, body interface{}) (*http.Reques
 // interface, the raw response body will be written to v, without attempting to
 // first decode it.
 func (c *Client) do(req *http.Request, v interface{}) (*Response, error) {
+
+	_ = c.waitForRateLimit(req.Method)
+
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, errors.New("client.do.do: " + err.Error())
@@ -156,13 +150,10 @@ func (c *Client) do(req *http.Request, v interface{}) (*Response, error) {
 		return nil, errors.New("client.do.readall: " + err.Error())
 	}
 
-	err = checkResponse(resp, data)
+	response, err := c.checkResponse(resp, data)
 	if err != nil {
 		return nil, errors.New("client.do.checkResponse: " + err.Error())
 	}
-
-	response := &Response{Response: resp}
-	c.Rate = response.Obj.Rate
 
 	if v != nil {
 		err := json.Unmarshal(data, v)
@@ -174,29 +165,60 @@ func (c *Client) do(req *http.Request, v interface{}) (*Response, error) {
 	return response, nil
 }
 
+// Wait for the Write or Read rate limit timeout
+func (c *Client) waitForRateLimit(method string) time.Duration {
+
+	var duration time.Duration
+
+	// Write limit for POST, PUT, DELETE:
+	limit := c.Rate.WriteLimit
+	actions := c.Rate.Writes
+	period := c.Rate.WriteLimitSeconds
+
+	// Read limit for GET:
+	if method == "GET" {
+		limit = c.Rate.ReadLimit
+		actions = c.Rate.Reads
+		period = c.Rate.ReadLimitSeconds
+	}
+
+	// More actions than the limit on the requested operation:
+	if actions >= limit && time.Now().Unix() < c.Rate.Time.Add(time.Duration(period)*time.Second).Unix() {
+		duration = c.Rate.Time.Add(time.Duration(period) * time.Second).Sub(time.Now())
+		time.Sleep(duration)
+	}
+
+	return duration
+}
+
 // CheckResponse checks the API response for errors, and returns them if
 // present.
-func checkResponse(r *http.Response, data []byte) error {
-
+func (c *Client) checkResponse(r *http.Response, data []byte) (*Response, error) {
+	var resp *Response
 	if r.StatusCode < 200 || r.StatusCode > 299 {
-		return errors.New(r.Status)
+		return nil, errors.New(r.Status)
 	}
 
 	if len(data) > 0 {
 
-		resp := &ErrorResponse{Response: r}
+		resp = &Response{Response: r}
 		err := json.Unmarshal(data, resp)
 		if err != nil {
-			return err
+			return nil, err
 		}
+
+		c.Rate = resp.Obj.Rate
+		c.Rate.WriteLimit = 10
+		c.Rate.ReadLimit = 10
+		c.Rate.Time = time.Now()
 
 		if resp.Obj.ErrorID != "" || resp.Obj.Error != "" {
 			str := fmt.Sprintf("AppNexus:checkResponse [%s]: %s", resp.Obj.ErrorID, resp.Obj.Error)
-			return errors.New(str)
+			return resp, errors.New(str)
 		}
 	}
 
-	return nil
+	return resp, nil
 }
 
 // Login to the AppNexus API and get an authentication token

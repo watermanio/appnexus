@@ -3,12 +3,14 @@ package appnexus
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 var (
@@ -67,6 +69,7 @@ func TestNewRequest(t *testing.T) {
 
 func TestCheckResponse(t *testing.T) {
 
+	c, _ := NewClient("http://sand.api.appnexus.com/")
 	data := strings.NewReader(`{"response":{"error_id":"SYNTAX","error":"invalid service","dbg_info":{"output_term":"not_found"}}}`)
 
 	buf := new(bytes.Buffer)
@@ -78,7 +81,7 @@ func TestCheckResponse(t *testing.T) {
 		Body:       ioutil.NopCloser(data),
 	}
 
-	err := checkResponse(res, buf.Bytes())
+	_, err := c.checkResponse(res, buf.Bytes())
 	if err == nil {
 		t.Errorf("Expected error response")
 	}
@@ -86,5 +89,38 @@ func TestCheckResponse(t *testing.T) {
 	expected := errors.New("AppNexus:checkResponse [SYNTAX]: invalid service")
 	if !reflect.DeepEqual(err, expected) {
 		t.Errorf("Error = %#v, expected %#v", err, expected)
+	}
+}
+
+func TestWaitForRateLimit(t *testing.T) {
+
+	c, _ := NewClient("http://sand.api.appnexus.com/")
+	c.Rate.Time = time.Now()
+	c.Rate.ReadLimit = 100
+	c.Rate.ReadLimitSeconds = 2
+	c.Rate.Reads = 99
+	c.Rate.WriteLimit = 100
+	c.Rate.WriteLimitSeconds = 2
+	c.Rate.Writes = 0
+
+	if actual, expected := fmt.Sprintf("%.0f", c.waitForRateLimit("GET").Seconds()), "0"; actual != expected {
+		t.Errorf("Waited %v for read rate limit, expected %v", actual, expected)
+	}
+
+	c.Rate.Reads = 100
+	if actual, expected := fmt.Sprintf("%.0f", c.waitForRateLimit("GET").Seconds()), "2"; actual != expected {
+		t.Errorf("Waited %v for read rate limit, expected %v", actual, expected)
+	}
+
+	if actual, expected := fmt.Sprintf("%.0f", c.waitForRateLimit("POST").Seconds()), "0"; actual != expected {
+		t.Errorf("Waited %v for write rate limit, expected %v", actual, expected)
+	}
+
+	if actual, expected := fmt.Sprintf("%.0f", c.waitForRateLimit("PUT").Seconds()), "0"; actual != expected {
+		t.Errorf("Waited %v for write rate limit, expected %v", actual, expected)
+	}
+
+	if actual, expected := fmt.Sprintf("%.0f", c.waitForRateLimit("DELETE").Seconds()), "0"; actual != expected {
+		t.Errorf("Waited %v for write rate limit, expected %v", actual, expected)
 	}
 }
