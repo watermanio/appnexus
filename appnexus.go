@@ -152,6 +152,19 @@ func (c *Client) do(req *http.Request, v interface{}) (*Response, error) {
 
 	response, err := c.checkResponse(resp, data)
 	if err != nil {
+
+		// If the call failed with a NOAUTH error, attempt to reauthenticate
+		// and try the request again:
+		if response.Obj.ErrorID == "NOAUTH" && req.URL.Path != "auth" {
+			c.token = ""
+			err = c.Login(c.credentials.Username, c.credentials.Password)
+			if err != nil {
+				return nil, errors.New("Could not reauthenticate:\n" + err.Error())
+			}
+
+			return c.do(req, v)
+		}
+
 		return nil, errors.New("client.do.checkResponse: " + err.Error())
 	}
 
@@ -208,8 +221,6 @@ func (c *Client) checkResponse(r *http.Response, data []byte) (*Response, error)
 		}
 
 		c.Rate = resp.Obj.Rate
-		c.Rate.WriteLimit = 10
-		c.Rate.ReadLimit = 10
 		c.Rate.Time = time.Now()
 
 		if resp.Obj.ErrorID != "" || resp.Obj.Error != "" {
